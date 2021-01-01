@@ -1,3 +1,5 @@
+__pycache__/
+log/
 venv/
 local_settings.py
 test_app.py
