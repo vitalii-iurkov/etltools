@@ -9,7 +9,7 @@ from dataclasses import asdict
 import psycopg2
 import psycopg2.extensions
 
-from pg_tools.db_config import DBConfig
+from etltools.pg_tools.db_config import DBConfig
 
 
 class PgConnectorError(Exception):

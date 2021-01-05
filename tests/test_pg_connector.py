@@ -6,9 +6,9 @@ import os
 import unittest
 from dataclasses import asdict
 
-from local_settings import test_config
-from pg_tools.db_config import DBConfig
-from pg_tools.pg_connector import PgConnector, PgConnectorError
+from etltools.local_settings import test_config
+from etltools.pg_tools.db_config import DBConfig
+from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
 
 
 class PgConnectorTest(unittest.TestCase):

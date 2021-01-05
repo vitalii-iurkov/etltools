@@ -5,7 +5,7 @@ import logging.config
 import os
 import unittest
 
-from pg_tools.db_config import DBConfig
+from etltools.pg_tools.db_config import DBConfig
 
 
 class DBConfigTest(unittest.TestCase):

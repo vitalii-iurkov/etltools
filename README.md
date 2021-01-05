@@ -33,3 +33,20 @@ Run tests and exclude from output information about all Exceptions and Traceback
 ```
 python -m unittest discover -v -b
 ```
+
+## for VS Code 
+
+### Unresolved import warnings
+
+https://github.com/microsoft/python-language-server/blob/master/TROUBLESHOOTING.md#unresolved-import-warnings
+
+
+### `.vscode/settings.json`
+
+```
+{
+    "python.languageServer": "Jedi",
+}
+```
+
+И везде указывать название пакета `etltools`, например, `from etltools.local_settings import test_config`
