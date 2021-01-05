@@ -9,6 +9,10 @@ Some tools for data processing.
         + BaseParser
     + user_agents.py
         + UserAgent
+    + (postgresql db) parsers
+        + user_agent
+        + user_agent_log
+        + user_agent_insert_func(...)
 + pg_tools :
     + db_config.py
         + DBConfig
