@@ -63,11 +63,11 @@ CREATE TRIGGER user_agent_update_trg
  * table for logging errors when working with user-agents
  */
 CREATE TABLE user_agent_log (
-    user_agent_log_id SERIAL,
+    user_agent_log_id   SERIAL,
 
-    user_agent_id INTEGER NOT NULL,
-    log_tz TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    msg TEXT NOT NULL, -- error message
+    user_agent_id       INTEGER NOT NULL,
+    log_tz              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    msg                 TEXT NOT NULL, -- error message
 
     FOREIGN KEY (user_agent_id) REFERENCES user_agent (user_agent_id)
         ON UPDATE CASCADE
@@ -127,6 +127,7 @@ $$ LANGUAGE 'plpgsql';
  */
 SELECT * FROM user_agent;
 
+
 SELECT
     hardware,
     COUNT(*) AS total
@@ -134,3 +135,43 @@ FROM user_agent
 GROUP BY hardware
 ORDER BY total DESC, hardware
 ;
+
+
+SELECT title FROM user_agent ORDER BY update_tz NULLS FIRST;
+
+SELECT * FROM user_agent WHERE (update_tz IS NOT NULL) OR (successes+errors>0);
+
+
+(SELECT * FROM user_agent WHERE hardware='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 20)
+UNION
+(SELECT * FROM user_agent WHERE hardware!='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 10)
+ORDER BY software, user_agent_id;
+
+
+WITH cte AS (
+    (SELECT * FROM user_agent WHERE hardware='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 20)
+    UNION
+    (SELECT * FROM user_agent WHERE hardware!='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 10)
+)
+SELECT
+    software,
+    title,
+    version,
+    os,
+    hardware,
+    popularity
+FROM cte
+ORDER BY software, user_agent_id;
+
+
+
+
+
+
+
+
+
+
+
+
+
