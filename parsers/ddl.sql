@@ -139,7 +139,19 @@ ORDER BY total DESC, hardware
 
 SELECT title FROM user_agent ORDER BY update_tz NULLS FIRST;
 
-SELECT * FROM user_agent WHERE (update_tz IS NOT NULL) OR (successes+errors>0) ORDER BY update_tz DESC;
+
+-- show updated rows; for debugging purposes
+SELECT
+    user_agent_id,
+    title,
+    successes,
+    errors,
+    update_tz
+FROM user_agent
+WHERE 1=2
+    OR (update_tz IS NOT NULL)
+    OR (successes+errors>0)
+ORDER BY update_tz DESC;
 
 
 (SELECT * FROM user_agent WHERE hardware='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 20)

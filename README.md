@@ -28,7 +28,7 @@ Some tools for data processing.
 + test_logging.conf
 
 
-# Additional
+# Additional for development purproses
 
 ## unittest
 
@@ -40,11 +40,6 @@ python -m unittest discover -v -b
 
 ## for VS Code 
 
-### Unresolved import warnings
-
-https://github.com/microsoft/python-language-server/blob/master/TROUBLESHOOTING.md#unresolved-import-warnings
-
-
 ### `.vscode/settings.json`
 
 ```
@@ -53,4 +48,6 @@ https://github.com/microsoft/python-language-server/blob/master/TROUBLESHOOTING.
 }
 ```
 
-И везде указывать название пакета `etltools`, например, `from etltools.local_settings import test_config`
+### Unresolved import warnings ( - doesn't work)
+
+https://github.com/microsoft/python-language-server/blob/master/TROUBLESHOOTING.md#unresolved-import-warnings
