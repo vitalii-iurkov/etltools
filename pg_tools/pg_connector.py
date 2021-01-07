@@ -9,6 +9,7 @@ from dataclasses import asdict
 import psycopg2
 import psycopg2.extensions
 
+from etltools.additions.logger_mixin import LoggerMixin
 from etltools.pg_tools.db_config import DBConfig
 
 
@@ -16,61 +17,60 @@ class PgConnectorError(Exception):
     pass
 
 
-class PgConnector:
+class PgConnector(LoggerMixin):
     def __init__(self, config: DBConfig):
         '''
         in: config, DBConfig(hostname='localhost', port='5432', database='db_name', user='role_name', password='password')
         '''
-        self.log_prefix = 'PgConnector'
-        self.logger = logging.getLogger(os.path.basename(__file__))
+        super().__init__(name=os.path.basename(__file__), log_prefix=self.__class__.__name__)
 
         if isinstance(config, DBConfig):
             self.config = asdict(config)
         else:
-            err_msg = f'[{self.log_prefix}] Incorrect connection configuration : {type(config)=}'
-            self.logger.error(err_msg)
-            raise PgConnectorError(err_msg)
+            msg = f'Incorrect connection configuration : {type(config)=}'
+            self.logger.error(self.log_msg(msg))
+            raise PgConnectorError(msg)
 
         # this attribute is for logging purposes only
         self.conn_string = str(config)
 
-        self.__conn = None
-        self.__cur = None
+        self._conn = None
+        self._cur = None
 
     def __enter__(self):
         try:
-            self.__conn = psycopg2.connect(**self.config)
-            self.__cur = self.__conn.cursor()
+            self._conn = psycopg2.connect(**self.config)
+            self._cur = self._conn.cursor()
         except Exception as ex:
-            self.__conn = None
-            self.__cur = None
+            self._conn = None
+            self._cur = None
 
-            self.logger.exception(f'[{self.log_prefix}] connection={self.conn_string}, {ex=}')
+            self.logger.exception(self.log_msg(f'Connection error : {self.conn_string}, {ex=}'))
 
             raise PgConnectorError(f'Error while connecting to database : {self.conn_string}') from ex
         else:
-            self.logger.info(f'[{self.log_prefix}] Connection opened : {self.conn_string}')
+            self.logger.info(self.log_msg(f'Connection opened : {self.conn_string}'))
             return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # if we have active connection and in transaction status
-        if self.__conn and self.__conn.status != psycopg2.extensions.STATUS_READY:
+        if self._conn and self._conn.status != psycopg2.extensions.STATUS_READY:
             if exc_type: # if error, then rollback
-                self.__conn.rollback()
-                self.logger.warning(f'[{self.log_prefix}] The last transaction was canceled, {exc_type=}, {exc_val=}')
+                self._conn.rollback()
+                self.logger.warning(self.log_msg(f'The last transaction was canceled, {exc_type=}, {exc_val=}'))
             else:
                 try:
-                    self.__conn.commit()
+                    self._conn.commit()
                 except Exception as ex:
-                    self.__conn.rollback()
-                    self.logger.exception(f'[{self.log_prefix}] The last transaction was canceled, {ex=}')
+                    self._conn.rollback()
+                    self.logger.exception(self.log_msg(f'The last transaction was canceled, {ex=}'))
 
-        if self.__cur:
-            self.__cur.close()
-        if self.__conn:
-            self.__conn.close()
+        if self._cur:
+            self._cur.close()
+        if self._conn:
+            self._conn.close()
 
-        self.logger.info(f'[{self.log_prefix}] Connection closed : {self.conn_string}')
+        self.logger.info(self.log_msg(f'Connection closed : {self.conn_string}'))
 
     def execute(self, query: str, args: tuple=None):
         '''
@@ -80,17 +80,17 @@ class PgConnector:
         '''
         result = None
         try:
-            self.__cur.execute(query, args)
+            self._cur.execute(query, args)
 
             # try to fetch results from query
             try:
-                result = self.__cur.fetchall() # will work for 'SELECT...' and 'INSERT... RETURNING...'
+                result = self._cur.fetchall() # will work for 'SELECT...' and 'INSERT... RETURNING...'
             except:
                 result = None
 
-            self.logger.info(f'[{self.log_prefix}] Successfully executed {query=}, {args=}')
+            self.logger.info(self.log_msg(f'Successfully executed {query=}, {args=}'))
         except Exception as ex:
-            self.logger.exception(f'[{self.log_prefix}] Error executing {query=}, {args=}')
+            self.logger.exception(self.log_msg(f'Error executing {query=}, {args=}; {ex=}'))
             result = None
 
         return result
@@ -99,28 +99,28 @@ class PgConnector:
         '''
         commit open transaction
         '''
-        if self.__conn.status == psycopg2.extensions.STATUS_READY:
-            self.logger.info(f'[{self.log_prefix}] Nothing to commit')
+        if self._conn.status == psycopg2.extensions.STATUS_READY:
+            self.logger.info(self.log_msg('Nothing to commit'))
         else:
             try:
-                self.__conn.commit()
+                self._conn.commit()
             except Exception as ex:
-                self.__conn.rollback()
-                self.logger.exception(f'[{self.log_prefix}] Error during commit, {ex=}. The transaction was canceled')
+                self._conn.rollback()
+                self.logger.exception(self.log_msg(f'Error during commit, {ex=}. The transaction was canceled'))
             else:
-                self.logger.info(f'[{self.log_prefix}] Successfully committed')
+                self.logger.info(self.log_msg('Successfully committed'))
 
     def rollback(self):
         '''
         rollback open transaction
         '''
-        if self.__conn.status == psycopg2.extensions.STATUS_READY:
-            self.logger.info(f'[{self.log_prefix}] Nothing to rollback')
+        if self._conn.status == psycopg2.extensions.STATUS_READY:
+            self.logger.info(self.log_msg('Nothing to rollback'))
         else:
             try:
-                self.__conn.rollback()
+                self._conn.rollback()
             except Exception as ex:
-                self.logger.exception(f'[{self.log_prefix}] Error during rollback, {ex=}')
+                self.logger.exception(self.log_msg(f'Error during rollback, {ex=}'))
                 raise PgConnectorError(f'Error during rollback') from ex
             else:
-                self.logger.info(f'[{self.log_prefix}] Successfully rollback')
+                self.logger.info(self.log_msg('Successfully rolled back'))
