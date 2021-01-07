@@ -7,6 +7,9 @@ import logging.config
 import os
 import subprocess
 
+from psycopg2.extensions import quote_ident
+
+from etltools.additions.logger_mixin import LoggerMixin
 from etltools.local_settings import parsers_config
 from etltools.pg_tools.db_config import DBConfig
 from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
@@ -16,21 +19,22 @@ class UserAgentError(Exception):
     pass
 
 
-class UserAgent:
+class UserAgent(LoggerMixin):
     # User-Agent is returned by default if there is no database connection
     DEFAULT_USER_AGENT_TITLE = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
 
     def __init__(self, config: DBConfig):
+        super().__init__(name=os.path.basename(__file__), log_prefix=self.__class__.__name__)
+
         self._title = None # User-Agent title
 
-        self.log_prefix = 'UserAgent'
-        self.logger = logging.getLogger(os.path.basename(__file__))
-
+        # some hardcode - we plan to use here only PostgreSQL RDBMS (PgConnector class);
+        # if we use here, for example, Redis, we need to move this check to another level (to the connector class)
         if isinstance(config, DBConfig):
             self._config = config
         else:
             msg = f'Incorrect `config` datatype : {type(config)=}'
-            self.logger.exception(f'[{self.log_prefix}]', msg)
+            self.logger.error(self.log_msg(msg))
             raise UserAgentError(msg)
 
     @property
@@ -41,45 +45,52 @@ class UserAgent:
             try:
                 with PgConnector(self._config) as db:
                     self._title = db.execute(query)[0][0]
-                self.logger.info(f'[{self.log_prefix}] new User-Agent received : {self._title}')
+                self.logger.info(self.log_msg(f'New User-Agent received : {self._title}'))
             except PgConnectorError as ex:
                 self._title = None
-                self.logger.exception(f'[{self.log_prefix}] Error getting User-Agent from the database : {ex=}')
+                self.logger.exception(self.log_msg(f'Error getting User-Agent from the database : {ex=}'))
             except Exception as ex:
-                self.logger.exception(f'[{self.log_prefix}] {ex=}')
+                self.logger.exception(self.log_msg(f'{ex=}'))
 
         if self._title is not None:
             return self._title
         else:
             return self.__class__.DEFAULT_USER_AGENT_TITLE
 
-    def update_successes(self):
+    def increase_successes(self):
+        self.__increase_field('successes')
+
+    def increase_errors(self):
+        self.__increase_field('errors')
+        self._title = None # next time we want to get a new User-Agent
+
+    def __increase_field(self, field_name: str):
+        '''
+        increase `successes` or `errors` for active User-Agent
+
+        in: field_name, str - must be in ('successes', 'errors')
+        '''
+        # SQL injection ?
+        if field_name not in ('successes', 'errors'):
+            msg = f'Error: {field_name=}'
+            self.logger.error(self.log_msg(msg))
+            raise UserAgentError(msg)
+
         # if we don't have User-Agent value from the database, then pass this step
         if self._title is None:
+            self.logger.warning(self.log_msg(f'No User-Agent to increase `{field_name}`.'))
             return
 
-        query = 'UPDATE user_agent SET successes=successes+1 WHERE title=%s;'
+        query = 'UPDATE user_agent SET {field_name}={field_name}+1 WHERE title=%s;'.format(field_name=quote_ident(field_name))
         try:
             with PgConnector(self._config) as db:
                 _ = db.execute(query, (self._title, ))
-            self.logger.info(f'[{self.log_prefix}] Updated successes for User-Agent : {self._title}')
+            self.logger.info(self.log_msg(f'Increased `{field_name}` for User-Agent : {self._title}'))
+        except PgConnectorError as ex:
+            # error during interacting with the database
+            self.logger.exception(self.log_msg(f'Error increasing `{field_name}` for User-Agent : {self._title}, {ex=}'))
         except Exception as ex:
-            self.logger.exception(f'[{self.log_prefix}] Error updating successes for User-Agent : {self._title}, {ex=}')
-
-    def update_errors(self):
-        # if we don't have Uer-Agent value from the database, then pass this step
-        if self._title is None:
-            return
-
-        query = 'UPDATE user_agent SET errors=errors+1 WHERE title=%s;'
-        try:
-            with PgConnector(self._config) as db:
-                _ = db.execute(query, (self._title, ))
-            self.logger.info(f'[{self.log_prefix}] Updated errors for User-Agent : {self._title}')
-        except Exception as ex:
-            self.logger.execption(f'[{self.log_prefix}] Error updating errors for User-Agent : {self._title}, {ex=}')
-
-        self._title = None # next time we want to get a new User-Agent
+            self.logger.exception(self.log_msg(f'Error : {ex=}'))
 
 
 def insert_user_agents_from_files():
@@ -129,8 +140,8 @@ def main():
     ua = UserAgent(parsers_config)
 
     print(ua.title)
-    # ua.update_successes()
-    # ua.update_errors()
+    # ua.increase_successes()
+    # ua.increase_errors()
 
 
 if __name__ == '__main__':

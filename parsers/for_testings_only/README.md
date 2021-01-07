@@ -1,4 +1,6 @@
-# simple algorithm
+# algorithm to create `user_agent` table in `test` database for unit testings
+
+## **notes** : for unit testing we need only steps 1, 2, 4 and create `test` database
 
 ## 1. create `parsers` database dump, schema only
 

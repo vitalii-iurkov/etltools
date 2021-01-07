@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # get lines from `parsers_dump_20210106_sample_user_agents_data.sql` dump file
-# and write them into text files in `ua_sample_data` subdirectory
+# and write them into separate text files in `ua_sample_data` subdirectory
 
 import os
 import shutil
@@ -25,6 +25,7 @@ with open(os.path.join(BASE_DIR, USER_AGENTS_SAMPLE_DATA_FILE), 'r', encoding='u
     for line in f:
         software, line = line.strip().split('\t', 1)
 
+        # use `software` field as file name
         fname = os.path.join(BASE_DIR, USER_AGENTS_DIR, f'{software}.txt')
         with open(fname, 'a', encoding='utf-8') as ofs:
             ofs.write(line + '\n')
