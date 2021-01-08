@@ -123,4 +123,4 @@ class PgConnector(LoggerMixin):
                 self.logger.exception(self.log_msg(f'Error during rollback, {ex=}'))
                 raise PgConnectorError(f'Error during rollback') from ex
             else:
-                self.logger.info(self.log_msg('Successfully rolled back'))
+                self.logger.warning(self.log_msg('Successfully rolled back'))

@@ -103,50 +103,101 @@ class UserAgent(LoggerMixin):
             self.logger.exception(self.log_msg(f'Error : {ex=}'))
 
         # next time we want to get a new User-Agent
-        if field_name == 'errors':
+        if field_name == self.__class__.ERRORS_FIELD:
             self._title = None
 
-    def insert_user_agents_from_files(self, dir_name: str) -> int:
+    def insert_user_agents_from_files(self, dir_name: str) -> dict:
         '''
         insert User-Agents from text files into the database
 
-        in: dir_name, str - absolute path to the directory with User-Agent text files
+        in:
+            dir_name, str - absolute path to the directory with User-Agents text files
 
-        out: int - total number of successfully inserted User-Agents
+            text files with User-Agents should have the following format:
+                file name : `software.txt`, for example `Chrome.txt`, `Internet Explorer.txt`
+                User-Agent data in tab delimited format:
+                    format string: `title	version	os_type	hardware	popularity`
+                    for example:
+                        `Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36	60	Windows	Computer	Very common`
+                The data must be in the specified format, but the creator of the User-Agent files is responsible for their content
+
+        out:
+            total_stats {
+                'lines': 0,     # total number of lines in all files
+                'successes': 0, # total number of successful inserts into the database
+                'passes': 0,    # total number of passes - if we already have the same User-Agent in the database
+                'errors': 0,    # total number of lines with incorrect format in the files
+            }, dict
         '''
+        self.logger.info(self.log_msg('Started import from text files into the database'))
+
         if not os.path.exists(dir_name):
-            msg = f"Path doesn't exists : {dir_name=}"
+            msg = f"Path doesn't exist : {dir_name=}"
             self.logger.error(self.log_msg(msg))
             raise UserAgentError(msg)
 
-        total = 0 # total number of successfully inserted User-Agents
+        total_stats = {
+            'lines': 0,
+            'successes': 0,
+            'passes': 0,
+            'errors': 0,
+        }
         query = 'SELECT user_agent_insert_func(%s, %s, %s, %s, %s, %s);'
 
         try:
             with PgConnector(self._config) as db:
-                fnames = os.listdir(os.path.join(dir_name, 'ua'))
-                field_width = len(str(len(fnames)))
+                fnames = os.listdir(dir_name)
 
+                # for each file in the given directory
                 for idx, fname in enumerate(fnames):
                     software = fname.removesuffix('.txt')
-                    print(f'{idx+1:{field_width}}/{len(fnames)} : {software=}')
+                    print(f'{idx+1}/{len(fnames)} : {fname=}', end='')
 
-                    with open(os.path.join(dir_name, 'ua', fname), 'r', encoding='utf-8') as f:
-                        for line in f:
-                            title, version, os_type, hardware, popularity = line.strip().split('\t')
+                    # read text file and try to insert data to the database
+                    file_stats = {key:0 for key in total_stats} # stats for the current file
+                    self.logger.info(self.log_msg(f'Processing file `{fname}`'))
+                    try:
+                        with open(os.path.join(dir_name, fname), 'r', encoding='utf-8') as f:
+                            for line in f:
+                                file_stats['lines'] += 1
 
-                            user_agent_id = db.execute(query, (software, title, version, os_type, hardware, popularity))
+                                # try to parse line into five tab delimited values; simple syntax check
+                                user_agent_data = (line := line.strip()).split('\t')
+                                if len(user_agent_data) != len('title	version	os_type	hardware	popularity'.split('\t')):
+                                    self.logger.warning(f'Incorrect input data format. Expected five tab delimited values. Got {line=}')
+                                    file_stats['errors'] += 1
+                                    continue # try to process next line in the file
 
-                            # if we get new user_agent_id then increase their total amount
-                            if user_agent_id[0][0] > 0:
-                                total += 1
+                                # title, version, os_type, hardware, popularity = user_agent_data
+                                # user_agent_id = db.execute(query, (software, title, version, os_type, hardware, popularity))
+                                user_agent_id = db.execute(query, (software, *user_agent_data))
 
-                    db.commit()
+                                if user_agent_id[0][0] > 0: # if we got new user_agent_id then increase their total amount
+                                    file_stats['successes'] += 1
+                                else:
+                                    file_stats['passes'] += 1
+                    except Exception as ex:
+                        msg = f'Error reading data from file {fname=}, {ex=}'
+                        self.logger.error(self.log_msg(msg))
+                        db.rollback()
+
+                        print(f' - error')
+                    else:
+                        db.commit()
+                        print(f' - ok, {file_stats=}')
+
+                        for key, value in file_stats.items():
+                            total_stats[key] += value
+
+                    self.logger.info(self.log_msg(f'For file `{fname}`: {file_stats=}'))
+
+        # we don't need to analyze errors separately here
         except Exception as ex:
             self.logger.exception(self.log_msg(ex))
             raise UserAgentError('Error') from ex
 
-        return total
+        self.logger.info(self.log_msg(f'Total stats for all processed files: {total_stats=}'))
+        return total_stats.copy()
 
 
 def main():
@@ -160,8 +211,16 @@ def main():
 
     # parsers_config.database = '1234'
     # ua = UserAgent(parsers_config)
+    # print(ua.title)
+
+
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    dir_name = os.path.join(BASE_DIR, 'for_testings_only/ua_sample_data')
+
     ua = UserAgent(test_config)
-    print(ua.title)
+    res = ua.insert_user_agents_from_files(dir_name=dir_name)
+    print(res)
+    # print(ua.title)
 
 
 if __name__ == '__main__':
