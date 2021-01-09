@@ -64,6 +64,7 @@ class UserAgent(LoggerMixin):
                 self._title = None
                 self.logger.warning(self.log_msg(f'There are no rows in the response to the query. Is the `user_agent` table empty? {ex=}'))
             except Exception as ex:
+                # these errors are not related to getting User-Agent, so here it's assumed that we received the correct User-Agent
                 self.logger.exception(self.log_msg(f'{ex=}'))
 
         if self._title is not None:
@@ -198,29 +199,6 @@ class UserAgent(LoggerMixin):
 
         self.logger.info(self.log_msg(f'Total stats for all processed files: {total_stats=}'))
         return total_stats.copy()
-
-
-def main():
-    if os.name == 'posix':
-        _ = subprocess.run('clear')
-    else:
-        print('\n' * 42)
-
-    logging.config.fileConfig(fname='logging.conf', disable_existing_loggers=False)
-    logger = logging.getLogger(os.path.basename(__file__))
-
-    # parsers_config.database = '1234'
-    # ua = UserAgent(parsers_config)
-    # print(ua.title)
-
-
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    dir_name = os.path.join(BASE_DIR, 'for_testings_only/ua_sample_data')
-
-    ua = UserAgent(test_config)
-    res = ua.insert_user_agents_from_files(dir_name=dir_name)
-    print(res)
-    # print(ua.title)
 
 
 if __name__ == '__main__':

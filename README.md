@@ -35,7 +35,7 @@ Some tools for data processing.
 Run tests and exclude from output information about all Exceptions and Traceback.
 
 ```
-python -m unittest discover -v -b
+clear && python -m unittest discover -v -b
 ```
 
 ## for VS Code 

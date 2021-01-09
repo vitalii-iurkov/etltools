@@ -47,7 +47,7 @@ class PgConnector(LoggerMixin):
 
             self.logger.exception(self.log_msg(f'Connection error : {self.conn_string}, {ex=}'))
 
-            raise PgConnectorError(f'Error while connecting to database : {self.conn_string}') from ex
+            raise PgConnectorError(f'Error while connecting to the database : {self.conn_string}') from ex
         else:
             self.logger.info(self.log_msg(f'Connection opened : {self.conn_string}'))
             return self
