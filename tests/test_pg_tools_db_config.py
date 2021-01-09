@@ -10,10 +10,11 @@ from etltools.pg_tools.db_config import DBConfig
 
 class DBConfigTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # apply logging during testing
         logging.config.fileConfig(fname='test_logging.conf', disable_existing_loggers=False)
-        self.logger = logging.getLogger(os.path.basename(__file__))
+        cls.logger = logging.getLogger(os.path.basename(__file__))
 
     def test_repr(self):
         test_data = [

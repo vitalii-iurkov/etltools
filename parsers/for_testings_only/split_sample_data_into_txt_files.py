@@ -9,7 +9,7 @@ import shutil
 
 
 USER_AGENTS_DIR = 'ua_sample_data'
-USER_AGENTS_SAMPLE_DATA_FILE = 'parsers_dump_20210106_sample_user_agents_data.sql'
+USER_AGENTS_SAMPLE_DATA_FILE = 'parsers_dump_sample_user_agents_data.sql'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 

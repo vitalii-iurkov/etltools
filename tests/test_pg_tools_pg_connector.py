@@ -13,13 +13,11 @@ from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
 
 class PgConnectorTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # apply logging during testing
         logging.config.fileConfig(fname='test_logging.conf', disable_existing_loggers=False)
-        self.logger = logging.getLogger(os.path.basename(__file__))
-
-    def tearDown(self):
-        pass
+        cls.logger = logging.getLogger(os.path.basename(__file__))
 
     def test_incorrect_connection_configuration_type(self):
         # test `str` and `dict` connection parameters
