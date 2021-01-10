@@ -1,0 +1,11 @@
+Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0	50	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.1; WOW64; rv:42.0) Gecko/20100101 Firefox/42.0	42	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:72.0) Gecko/20100101 Firefox/72.0	72	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.1; rv:36.0) Gecko/20100101 Firefox/36.0	36	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0	62	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 5.1; rv:31.0) Gecko/20100101 Firefox/31.0	31	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 10.0; WOW64; rv:66.0) Gecko/20100101 Firefox/66.0	66	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.1; WOW64; rv:30.0) Gecko/20100101 Firefox/30.0	30	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.0; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0	41	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0	81	Windows	Computer	Very common
+Mozilla/5.0 (Windows NT 6.2; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0	56	Windows	Computer	Common

@@ -1,3 +1,9 @@
+# directories and files
+
++ ~dir~ `ua_sample_data` - directory for script `split_sample_data_into_txt_files.py` (clear data from real database)
++ ~dir~ `ua_sample_data_for_unittests` - User-Agents text files for testings only (changes here will crash tests)
+
+
 # algorithm to create `user_agent` table in `test` database for unit testings
 
 ## **notes** : for unit testing we need only steps 1, 2, 4 and create `test` database
