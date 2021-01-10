@@ -33,8 +33,8 @@ class UserAgentTest(unittest.TestCase):
         cls.logger = logging.getLogger(os.path.basename(__file__))
 
         cls.BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        cls.SQL_DUMP_DIR = os.path.join(cls.BASE_DIR, r'../parsers/for_testings_only')
-        cls.TEST_DATA_DIR = os.path.join(cls.SQL_DUMP_DIR, r'ua_sample_data_for_unittests')
+        cls.SQL_DUMP_DIR = os.path.join(cls.BASE_DIR, r'parsers/')
+        cls.TEST_DATA_DIR = os.path.join(cls.SQL_DUMP_DIR, r'user_agent_test_data/')
 
         # drop all object from the test database
         with PgConnector(test_config) as db:
@@ -138,7 +138,7 @@ class UserAgentTest(unittest.TestCase):
         prev_title = None
         increase_new_titles = True # increase the number of new titles if we have an error or at the beginning of a loop
 
-        for _ in range(1000):
+        for _ in range(100):
             if increase_new_titles:
                 check_data['new_titles'] += 1
                 increase_new_titles = False
