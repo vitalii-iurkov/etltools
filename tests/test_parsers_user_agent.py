@@ -3,6 +3,7 @@
 import logging
 import logging.config
 import os
+import random
 import subprocess
 import time
 from dataclasses import asdict
@@ -88,7 +89,7 @@ class UserAgentTest(unittest.TestCase):
         #   `Chrome.txt` - 19 lines, 19 correct User-Agent lines
         #   `Firefox.txt` - 11 lines, 11 correct User-Agent lines
         #   `Incorrect User Agents File.txt` - 4 lines, 4 incorrect User-Agent lines
-        #   `Internet Explorer.txt`- 20 lines, 16 correct User-Agent lines
+        #   `Internet Explorer.txt`- 20 lines, 16 correct User-Agent lines, 4 incorrect User-Agent lines
         #   `User Agent Copies.txt` - 8 lines, 8 correct User-Agent lines, 8 elements that are already in the rest of the files
         test_stats = {
             'lines': 62,
@@ -112,7 +113,7 @@ class UserAgentTest(unittest.TestCase):
 
         # get one User-Agent with raw SQL query
         with PgConnector(test_config) as db:
-            res_title = db.execute("SELECT title FROM user_agent WHERE hardware='Computer' ORDER BY update_tz, title NULLS FIRST LIMIT 1;")[0][0]
+            res_title = db.execute("SELECT title FROM user_agent WHERE hardware='Computer' ORDER BY update_tz NULLS FIRST, title LIMIT 1;")[0][0]
 
         # compare User-Agents
         self.assertEqual(res_title, ua.title)
@@ -121,4 +122,46 @@ class UserAgentTest(unittest.TestCase):
         '''
         test increasing successes and errors
         '''
-        pass
+        # expected values
+        check_data = {
+            'new_titles': 0, # how many times we expect to get a new User-Agent from the database
+            'successes': 0,
+            'errors': 0,
+        }
+        # test results
+        test_data = check_data.copy()
+
+        # insert User-Agent test data from text files
+        ua = UserAgent(test_config)
+        _ = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
+
+        prev_title = None
+        increase_new_titles = True # increase the number of new titles if we have an error or at the beginning of a loop
+
+        for _ in range(1000):
+            if increase_new_titles:
+                check_data['new_titles'] += 1
+                increase_new_titles = False
+
+            # here we expect to get a new User-Agent title (at the beginning of a loop or after an error)
+            _ = ua.title # "process" titles
+            if prev_title is None or prev_title != ua.title:
+                test_data['new_titles'] += 1
+                prev_title = ua.title
+
+            # simulate random User-Agent usage
+            if random.random() < 0.75: # successes
+                check_data['successes'] += 1
+
+                ua.update_usage(ua.SUCCESSES_FIELD)
+            else: # errors
+                check_data['errors'] += 1
+                increase_new_titles = True
+
+                ua.update_usage(ua.ERRORS_FIELD)
+
+        # get test results from the database
+        with PgConnector(test_config) as db:
+            test_data['successes'], test_data['errors'] = db.execute('SELECT SUM(successes), SUM(errors) FROM user_agent;')[0]
+
+        self.assertEqual(check_data, test_data)

@@ -52,7 +52,7 @@ class UserAgent(LoggerMixin):
         #     1. the initial value
         #     2. after error while using the User-Agent
         if self._title is None:
-            query = "SELECT title FROM user_agent WHERE hardware='Computer' ORDER BY update_tz, title NULLS FIRST LIMIT 1;"
+            query = "SELECT title FROM user_agent WHERE hardware='Computer' ORDER BY update_tz NULLS FIRST, title LIMIT 1;"
             try:
                 with PgConnector(self._config) as db:
                     self._title = db.execute(query)[0][0]
