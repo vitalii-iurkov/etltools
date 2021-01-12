@@ -5,11 +5,10 @@
 import logging
 import logging.config
 import os
-import subprocess
 
 from psycopg2.extensions import quote_ident
 
-from etltools.additions.logger_mixin import LoggerMixin
+from etltools.additions.logger import Logger
 from etltools.local_settings import parsers_config
 from etltools.local_settings import test_config
 from etltools.pg_tools.db_config import DBConfig
@@ -20,7 +19,7 @@ class UserAgentError(Exception):
     pass
 
 
-class UserAgent(LoggerMixin):
+class UserAgent(Logger):
     # User-Agent is returned by default if there is no database connection
     DEFAULT_USER_AGENT_TITLE = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
 

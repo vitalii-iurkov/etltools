@@ -9,7 +9,7 @@ SQL code for creating `parsers` database and role `parsers`.
 + user_agent_dml.sql
 + user_agent.py
     + `UserAgentError(Exception)`               : class
-    + `UserAgent(LoggerMixin)`                  : class
+    + `UserAgent(Logger)`                       : class
         + DEFAULT_USER_AGENT_TITLE              : class attribute
         + SUCCESSES_FIELD                       : class attribute
         + ERRORS_FIELD                          : class attribute

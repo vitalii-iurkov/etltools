@@ -5,7 +5,7 @@
 import logging
 
 
-class LoggerMixin:
+class Logger:
     '''
     add logging functionality
     '''
@@ -15,9 +15,8 @@ class LoggerMixin:
             name, str - name of the file, for example, os.path.basename(__file__)
             log_prefix, str - for example, self.__class__.__name__
         '''
-        self.log_prefix = log_prefix
-
         self.logger = logging.getLogger(name)
+        self.log_prefix = log_prefix
 
     def log_msg(self, msg: str):
         return f'[{self.log_prefix}] ' + msg

@@ -9,7 +9,7 @@ from dataclasses import asdict
 import psycopg2
 import psycopg2.extensions
 
-from etltools.additions.logger_mixin import LoggerMixin
+from etltools.additions.logger import Logger
 from etltools.pg_tools.db_config import DBConfig
 
 
@@ -17,7 +17,7 @@ class PgConnectorError(Exception):
     pass
 
 
-class PgConnector(LoggerMixin):
+class PgConnector(Logger):
     def __init__(self, config: DBConfig):
         '''
         in: config, DBConfig(hostname='localhost', port='5432', database='db_name', user='role_name', password='password')
