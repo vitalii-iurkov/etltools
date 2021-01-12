@@ -2,6 +2,19 @@
 
 SQL code for creating `parsers` database and role `parsers`.
 
+# Parser files and objects
+
+```
++ parser.py
+    + ParserError(Exception)        : class
+    + Parser(Logger)                : class
+        + html                      : property
+        + pages_url(...)            : method
+        + get_html(...)             : method
+        + parse_catalog_page(...)   : method
+        + parse_item_page(...)      : method
+```
+
 # User-Agent files and objects
 
 ```
