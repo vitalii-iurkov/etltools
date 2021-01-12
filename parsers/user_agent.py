@@ -199,7 +199,3 @@ class UserAgent(LoggerMixin):
 
         self.logger.info(self.log_msg(f'Total stats for all processed files: {total_stats=}'))
         return total_stats.copy()
-
-
-if __name__ == '__main__':
-    pass
