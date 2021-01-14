@@ -24,8 +24,9 @@ class UserAgent(Logger):
     DEFAULT_USER_AGENT_TITLE = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
 
     # columns in the `user_agent` table to update the number of success/error usage
-    SUCCESSES_FIELD = 'successes'
-    ERRORS_FIELD = 'errors'
+    SUCCESSES_FIELD = 'successes'   # status code = 200
+    ERRORS_FIELD = 'errors'         # status code = 429
+    UPDATE_TZ_FIELD = 'update_tz'   # status code not in (200, 429) or other error while HTTP request
 
     def __init__(self, config: DBConfig):
         super().__init__(name=os.path.basename(__file__), log_prefix=self.__class__.__name__)
@@ -73,16 +74,26 @@ class UserAgent(Logger):
 
     def update_usage(self, field_name: str):
         '''
-        increase `successes` or `errors` for active User-Agent after its usage
+        increase `successes` or `errors` for active User-Agent after its usage (if status code in (200, 429))
+        or simple update field `update_tz` to `NOW()` value in all other situations:
+
+            this situation occurs with any scraping error, when we do not receive a status code 200 or 429,
+            but it should be noted that this User-Agent was used; this is necessary for the rotation of User-Agents,
+            since we may not know for what reason the download error occurred ("common" error or incorrect User-Agent)
 
         in: field_name, str - must be
             SUCCESSES_FIELD
-            or
             ERRORS_FIELD
+            UPDATE_TZ_FIELD
         '''
         # SQL injection ?
-        if field_name not in (self.__class__.SUCCESSES_FIELD, self.__class__.ERRORS_FIELD):
-            msg = f'Error: {field_name=}; must be `{self.__class__.__name__}.SUCCESSES_FIELD` or `{self.__class__.__name__}.ERRORS_FIELD`'
+        if field_name not in (self.__class__.SUCCESSES_FIELD, self.__class__.ERRORS_FIELD, self.__class__.UPDATE_TZ_FIELD):
+            msg = (
+                f'Error: {field_name=}; must be '
+                f'`{self.__class__.__name__}.SUCCESSES_FIELD`, '
+                f'`{self.__class__.__name__}.ERRORS_FIELD` or '
+                f'`{self.__class__.__name__}.UPDATE_TZ_FIELD`'
+            )
             self.logger.error(self.log_msg(msg))
             raise UserAgentError(msg)
 
@@ -93,17 +104,20 @@ class UserAgent(Logger):
 
         try:
             with PgConnector(self._config) as db:
-                query = 'UPDATE user_agent SET {field_name}={field_name}+1 WHERE title=%s;'.format(field_name=quote_ident(field_name, db._conn))
+                if field_name in (self.__class__.SUCCESSES_FIELD, self.__class__.ERRORS_FIELD):
+                    query = 'UPDATE user_agent SET {field_name}={field_name}+1 WHERE title=%s;'.format(field_name=quote_ident(field_name, db._conn))
+                else: # field_name == self.__class__.UPDATE_TZ_FIELD:
+                    query = 'UPDATE user_agent SET successes=successes WHERE title=%s;'
                 _ = db.execute(query, (self._title, ))
-            self.logger.info(self.log_msg(f'Increased `{field_name}` for User-Agent : {self._title}'))
+            self.logger.info(self.log_msg(f'Updated `{field_name}` for User-Agent : {self._title}'))
         except PgConnectorError as ex:
             # error during interacting with the database
-            self.logger.exception(self.log_msg(f'Error increasing `{field_name}` for User-Agent : {self._title}, {ex=}'))
+            self.logger.exception(self.log_msg(f'Error updating `{field_name}` for User-Agent : {self._title}, {ex=}'))
         except Exception as ex:
             self.logger.exception(self.log_msg(f'Error : {ex=}'))
 
-        # next time we want to get a new User-Agent
-        if field_name == self.__class__.ERRORS_FIELD:
+        # if any error then next time we want to get a new User-Agent
+        if field_name != self.__class__.SUCCESSES_FIELD:
             self._title = None
 
     def insert_user_agents_from_files(self, dir_name: str) -> dict:
@@ -123,10 +137,10 @@ class UserAgent(Logger):
 
         out:
             total_stats {
-                'lines': 0,     # total number of lines in all files
-                'successes': 0, # total number of successful inserts into the database
-                'passes': 0,    # total number of passes - if we already have the same User-Agent in the database
-                'errors': 0,    # total number of lines with incorrect format in the files
+                'lines'     : 0, # total number of lines in all files
+                'successes' : 0, # total number of successful inserts into the database
+                'passes'    : 0, # total number of passes - if we already have the same User-Agent in the database
+                'errors'    : 0, # total number of lines with incorrect format in the files
             }, dict
         '''
         self.logger.info(self.log_msg('Started import from text files into the database'))
@@ -137,10 +151,10 @@ class UserAgent(Logger):
             raise UserAgentError(msg)
 
         total_stats = {
-            'lines': 0,
-            'successes': 0,
-            'passes': 0,
-            'errors': 0,
+            'lines'     : 0,
+            'successes' : 0,
+            'passes'    : 0,
+            'errors'    : 0,
         }
         query = 'SELECT user_agent_insert_func(%s, %s, %s, %s, %s, %s);'
 

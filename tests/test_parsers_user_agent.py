@@ -50,11 +50,11 @@ class UserAgentTest(unittest.TestCase):
             ["psql", "-f", fname],
             stdout=subprocess.PIPE,
             env=os.environ | {
-                'PGHOST': test_config.host,
-                'PGPORT': test_config.port,
-                'PGDATABASE': test_config.database,
-                'PGUSER': test_config.user,
-                'PGPASSWORD': test_config.password,
+                'PGHOST'        : test_config.host,
+                'PGPORT'        : test_config.port,
+                'PGDATABASE'    : test_config.database,
+                'PGUSER'        : test_config.user,
+                'PGPASSWORD'    : test_config.password,
             }
         )
 
@@ -92,10 +92,10 @@ class UserAgentTest(unittest.TestCase):
         #   `Internet Explorer.txt`- 20 lines, 16 correct User-Agent lines, 4 incorrect User-Agent lines
         #   `User Agent Copies.txt` - 8 lines, 8 correct User-Agent lines, 8 elements that are already in the rest of the files
         test_stats = {
-            'lines': 62,
-            'successes': 46,
-            'passes': 8,
-            'errors': 8,
+            'lines'     : 62,
+            'successes' : 46,
+            'passes'    : 8,
+            'errors'    : 8,
         }
 
         ua = UserAgent(test_config)
@@ -118,15 +118,15 @@ class UserAgentTest(unittest.TestCase):
         # compare User-Agents
         self.assertEqual(res_title, ua.title)
 
-    def test_update_usage(self):
+    def test_update_usage_successes_errors(self):
         '''
         test increasing successes and errors
         '''
         # expected values
         check_data = {
-            'new_titles': 0, # how many times we expect to get a new User-Agent from the database
-            'successes': 0,
-            'errors': 0,
+            'new_titles'    : 0, # how many times we expect to get a new User-Agent from the database
+            'successes'     : 0,
+            'errors'        : 0,
         }
         # test results
         test_data = check_data.copy()
@@ -165,3 +165,40 @@ class UserAgentTest(unittest.TestCase):
             test_data['successes'], test_data['errors'] = db.execute('SELECT SUM(successes), SUM(errors) FROM user_agent;')[0]
 
         self.assertEqual(check_data, test_data)
+
+    def test_update_usage_update_tz(self):
+        '''
+        test User-Agent usage without increasing successes or errors, only change update_tz
+        '''
+        # insert User-Agent test data from text files
+        ua = UserAgent(test_config)
+        _ = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
+
+        # update `successes` and `errors` with random values
+        # update only first 80% of rows to have NULL values in `update_tz` fields for the rest of rows
+        update_successes_errors_query = (
+            'UPDATE user_agent SET successes=(100.0 * RANDOM())::integer, errors=(20.0 * RANDOM())::integer '
+            '    WHERE user_agent_id < (SELECT (0.80 * MAX(user_agent_id))::integer FROM user_agent);'
+        )
+        with PgConnector(test_config) as db:
+            _ = db.execute(query=update_successes_errors_query)
+
+        query = 'SELECT successes, errors, update_tz FROM user_agent WHERE title=%s;'
+        with PgConnector(test_config) as db:
+            for _ in range(100): # total number of tests
+                title = ua.title # get new (if first loop iteration) or next UserAgent
+
+                before_successes, before_errors, before_update_tz = db.execute(query=query, args=(title, ))[0]
+                ua.update_usage(field_name=UserAgent.UPDATE_TZ_FIELD)
+                after_successes, after_errors, after_update_tz = db.execute(query=query, args=(title, ))[0]
+
+                # before and after successes and errors should be equal
+                self.assertEqual((before_successes, before_errors), (after_successes, after_errors))
+
+                # before_update_tz and after_update_tz should not be equal
+                self.assertNotEqual(before_update_tz, after_update_tz)
+
+                # get next UserAgent - it should be different from the previous one
+                self.assertNotEqual(title, ua.title)
+
+                time.sleep(0.01) # take a short pause

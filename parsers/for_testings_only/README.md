@@ -10,7 +10,7 @@
 ## 1. create `parsers` database dump, schema only
 
 ```bash
-pg_dump -h localhost -p 5432 -d parsers -U parsers -v --clean --if-exists --schema-only --no-owner > parsers_dump_20210106_schema_only.sql
+pg_dump -h localhost -p 5432 -d parsers -U parsers -v --clean --if-exists --schema-only --no-owner > parsers_dump_schema_only.sql
 ```
 
 ## 2. get sample data from `parsers` database, `user_agent` table
@@ -22,7 +22,7 @@ psql -h localhost -p 5432 -d parsers -U postgres --tuples-only --no-align --fiel
 ## 3. create objects in `test` database
 
 ```bash
-psql -h localhost -p 5432 -d test -U test -f parsers_dump_20210106_schema_only.sql
+psql -h localhost -p 5432 -d test -U test -f parsers_dump_schema_only.sql
 ```
 
 ## 4. insert sample data into text files in `ua_sample_data` subdirectory

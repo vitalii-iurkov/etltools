@@ -2,7 +2,6 @@ DROP TRIGGER IF EXISTS user_agent_update_trg ON user_agent;
 DROP FUNCTION IF EXISTS user_agent_update_func;
 
 
-DROP TABLE IF EXISTS user_agent_log;
 DROP TABLE IF EXISTS user_agent;
 
 
@@ -20,8 +19,8 @@ CREATE TABLE user_agent (
 
     -- these two parameters are for analytics purposes for the User-Agent
     -- for example, if errors>100 && successes==0, then exclude this user-agent from the query results
-    successes       INTEGER NOT NULL DEFAULT 0, -- total number of successful usages of the User-Agent
-    errors          INTEGER NOT NULL DEFAULT 0, -- total number of error usages of the User-Agent
+    successes       INTEGER NOT NULL DEFAULT 0, -- total number of successful usages of the User-Agent; for status code = 200
+    errors          INTEGER NOT NULL DEFAULT 0, -- total number of error usages of the User-Agent;      for status code = 429
 
     insert_tz       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     update_tz       TIMESTAMPTZ,
@@ -48,25 +47,6 @@ CREATE TRIGGER user_agent_update_trg
     FOR EACH ROW
     EXECUTE FUNCTION user_agent_update_func()
 ;
-
-
-/*
- * table for logging errors when working with User-Agents
- * (this table is populated with data only from the client applications)
- */
-CREATE TABLE user_agent_log (
-    user_agent_log_id   SERIAL,
-
-    user_agent_id       INTEGER NOT NULL,
-    log_tz              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    msg                 TEXT NOT NULL, -- error message
-
-    FOREIGN KEY (user_agent_id) REFERENCES user_agent (user_agent_id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    PRIMARY KEY (user_agent_log_id)
-);
 
 
 /*

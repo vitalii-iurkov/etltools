@@ -27,7 +27,7 @@ FROM user_agent
 WHERE 1=2
     OR (update_tz IS NOT NULL)
     OR (successes+errors>0)
-ORDER BY update_tz DESC;
+ORDER BY update_tz;
 
 
 (SELECT * FROM user_agent WHERE hardware='Computer' AND software IN ('Chrome', 'Firefox') ORDER BY RANDOM() LIMIT 20)
