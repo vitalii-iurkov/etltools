@@ -18,7 +18,7 @@ class ParserTest(unittest.TestCase):
 
     def test_pages_url_all_urls(self):
         '''
-        testing all pages url from start_url to template_url.format(to_page)
+        test all pages url from start_url to template_url.format(to_page)
         '''
         pages_url = [
             'https://www.somehost1.org/',
@@ -44,7 +44,7 @@ class ParserTest(unittest.TestCase):
 
     def test_pages_url_from_to_urls(self):
         '''
-        test only subset of pages url
+        test only subset of pages url : from_page - to_page
         '''
         pages_url = [
             'https://somehost2.info/catalog',
