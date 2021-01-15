@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import logging.config
 import os
@@ -188,9 +186,9 @@ class UserAgentTest(unittest.TestCase):
             for _ in range(100): # total number of tests
                 title = ua.title # get new (if first loop iteration) or next UserAgent
 
-                before_successes, before_errors, before_update_tz = db.execute(query=query, args=(title, ))[0]
+                before_successes, before_errors, before_update_tz = db.execute(query=query, args=(title,))[0]
                 ua.update_usage(field_name=UserAgent.UPDATE_TZ_FIELD)
-                after_successes, after_errors, after_update_tz = db.execute(query=query, args=(title, ))[0]
+                after_successes, after_errors, after_update_tz = db.execute(query=query, args=(title,))[0]
 
                 # before and after successes and errors should be equal
                 self.assertEqual((before_successes, before_errors), (after_successes, after_errors))

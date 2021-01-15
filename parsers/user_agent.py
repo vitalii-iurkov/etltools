@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # UserAgent implementation
 
 import logging
@@ -108,7 +106,7 @@ class UserAgent(Logger):
                     query = 'UPDATE user_agent SET {field_name}={field_name}+1 WHERE title=%s;'.format(field_name=quote_ident(field_name, db._conn))
                 else: # field_name == self.__class__.UPDATE_TZ_FIELD:
                     query = 'UPDATE user_agent SET successes=successes WHERE title=%s;'
-                _ = db.execute(query, (self._title, ))
+                _ = db.execute(query, (self._title,))
             self.logger.info(self.log_msg(f'Updated `{field_name}` for User-Agent : {self._title}'))
         except PgConnectorError as ex:
             # error during interacting with the database

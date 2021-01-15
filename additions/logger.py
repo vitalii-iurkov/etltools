@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # add logging functionality to other classes
 
 import logging

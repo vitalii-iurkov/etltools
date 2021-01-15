@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # base class to connect to PostgreSQL
 
 import logging
