@@ -57,9 +57,9 @@ class Parser(Logger):
 
         in:
             url, str - url where to download html
-            attempts_total, int - total number of attempts to download html from url
-            pause_duration, int - start pause in seconds before GET request
-            pause_increment, int - increment in seconds for pause before each next attempt
+            attempts_total, int - total number of attempts to download html from the given url
+            pause_duration, int (in seconds) - start pause before GET request
+            pause_increment, int (in seconds) - increment for pause before each next attempt
 
         out: bool
             True - successfully downloaded html
@@ -72,7 +72,7 @@ class Parser(Logger):
 
         # attempts to download html
         for attempt in range(1, attempts_total+1):
-            self.logger.info(self.log_msg(f'Request GET {attempt=} for {url=}'))
+            self.logger.info(self.log_msg(f'Request GET {attempt=}, {pause_duration=} for {url=}'))
 
             # pause before attempt and then increment this pause for the next attempt
             time.sleep(pause_duration)
@@ -80,40 +80,47 @@ class Parser(Logger):
 
             try:
                 headers = {
-                    'user-agent': ua.title,
+                    'User-Agent': ua.title, # get new or next after error/update User-Agent
                 }
                 # use `mitmproxy` for debugging purposes
-                # proxies = {
-                #     'http': 'http://127.0.0.1:8080',
-                #     'https': 'http://127.0.0.1:8080',
-                # }
+                proxies = {
+                    'http': 'http://127.0.0.1:8080',
+                    'https': 'http://127.0.0.1:8080',
+                }
                 response = requests.get(
                     url
                     , headers=headers
-                    # , proxies=proxies
+                    , proxies=proxies
+                    , verify=False # enable https over http
                 )
                 if response.status_code == 200:
-                    self.logger.info(self.log_msg(f'Successfully downloaded html from {url=}'))
                     self.html = response.content.decode('utf-8')
                     self.err_msg = None
+                    self.logger.info(self.log_msg(f'Successfully downloaded html from {url=}'))
                     ua.update_usage(UserAgent.SUCCESSES_FIELD)
-
-                    break
                 elif response.status_code == 429: # Too Many Requests; try again
-                    self.logger.warning(self.log_msg(f'429 Too Many Requests {url=}'))
                     self.err_msg = '429'
-                    ua.update_usage(UserAgent.ERRORS_FIELD)
-
-                    continue
-                else:
-                    self.logger.error(self.log_msg(f'Error downloading html from {url=}'))
-                    self.html = None
+                    self.logger.warning(self.log_msg(f'429 Too Many Requests {url=}'))
+                    ua.update_usage(UserAgent.ERRORS_FIELD) # next attempt we will take new User-Agent
+                else: # if we received any other status code except 200 or 429
                     self.err_msg = response.status_code
+                    self.logger.error(self.log_msg(f'Error downloading html from {url=}, status code={response.status_code}'))
+
+                    # here, in general, we do not know what led to the error and, just in case, we make a mark
+                    # about the use of this User-Agent, so that next time we can take another User-Agent,
+                    # since the error could also occur due to the incorrectness of the User-Agent itself
+                    ua.update_usage(UserAgent.UPDATE_TZ_FIELD)
             except UserAgentError as ex:
+                # here, this exception should not have an affect on getting html
+                # so, if we successfully received the html, we can exit the loop without error
                 self.logger.exception(self.log_msg(f'{ex=}'))
             except Exception as ex:
                 self.logger.exception(self.log_msg(f'{ex=}'))
                 raise ParserError(f'Error for {url=}') from ex
+
+            # exit the loop if we don't have an error "429 Too Many Requests"
+            if self.err_msg != '429':
+                break
 
         if self.html:
             return True # successfully downloaded html
@@ -123,12 +130,14 @@ class Parser(Logger):
     def parse_catalog_html(self):
         '''
         parse html catalog page
+        should be implemented in child classes
         '''
         raise NotImplementedError
 
     def parse_item_html(self):
         '''
         parse html item page
+        should be implemented in child classes
         '''
         raise NotImplementedError
 
@@ -140,12 +149,17 @@ def main():
         print('\n' * 42)
 
     logging.config.fileConfig(fname='logging.conf', disable_existing_loggers=False)
+    logging.captureWarnings(True)
     # logger = logging.getLogger(os.path.basename(__file__))
 
     p = Parser()
 
-    print(p.get_html('http://example.com/'))
-    print(p.html)
+    print(p.get_html('https://www.google.com/'))
+
+    if p.html:
+        print('Ok')
+    else:
+        print('Error')
 
 
 if __name__ == '__main__':
