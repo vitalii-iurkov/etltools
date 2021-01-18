@@ -1,5 +1,6 @@
 # Parser implementation
 
+import copy
 import logging
 import logging.config
 import os
@@ -22,8 +23,13 @@ class Parser(Logger):
     base class for downloading and preprocessing html pages
     '''
 
-    def __init__(self):
+    def __init__(self, parsers_config: 'DBConfig'):
+        '''
+        in: parsers_config, DBConfig - configuration to connect to `parsers` database
+        '''
         super().__init__(name=os.path.basename(__file__), log_prefix=self.__class__.__name__)
+
+        self.parsers_config = copy.deepcopy(parsers_config)
 
         self.html = None # str object to store downloaded html pages
         self.err_msg = None # error message for get_html() method
@@ -49,7 +55,7 @@ class Parser(Logger):
             self.logger.info(self.log_msg(f'Generated page url: {page_url}'))
             yield page_url
 
-    def get_html(self, url: str, attempts_total: int=10, pause_duration: int=0, pause_increment: int=1) -> bool:
+    def get_html(self, url: str, attempts_total: int=10, pause_duration: int=0, pause_increment: int=1, decode_errors: str='strict') -> bool:
         '''
         download html from given url and store it in self.html
 
@@ -58,6 +64,7 @@ class Parser(Logger):
             attempts_total, int - total number of attempts to download html from the given url
             pause_duration, int (in seconds) - start pause before GET request
             pause_increment, int (in seconds) - increment for pause before each next attempt
+            decode_errors, str - how to handle decoding errors; possible values are 'strict', 'ignore', 'replace'
 
         out: bool
             True - successfully downloaded html
@@ -66,11 +73,14 @@ class Parser(Logger):
         self.html = None
         self.err_msg = None
 
-        ua = UserAgent(parsers_config)
+        if decode_errors not in ('strict', 'ignore', 'replace'):
+            decode_errors = 'strict'
+
+        ua = UserAgent(self.parsers_config)
 
         # attempts to download html
         for attempt in range(1, attempts_total+1):
-            self.logger.info(self.log_msg(f'Request GET {attempt=}, {pause_duration=} for {url=}'))
+            self.logger.info(self.log_msg(f'Request GET {attempt=}, {pause_duration=} seconds, {url=}'))
 
             # pause before attempt and then increment this pause for the next attempt
             time.sleep(pause_duration)
@@ -92,7 +102,7 @@ class Parser(Logger):
                     , verify=False # enable https over http
                 )
                 if response.status_code == 200:
-                    self.html = response.content.decode('utf-8')
+                    self.html = response.content.decode(encoding='utf-8', errors=decode_errors)
                     self.err_msg = None
                     self.logger.info(self.log_msg(f'Successfully downloaded html from {url=}'))
                     ua.update_usage(UserAgent.SUCCESSES_FIELD)
@@ -112,6 +122,10 @@ class Parser(Logger):
                 # here, this exception should not have an affect on getting html
                 # so, if we successfully received the html, we can exit the loop without error
                 self.logger.exception(self.log_msg(f'{ex=}'))
+            except UnicodeDecodeError as ex:
+                self.html = None
+                self.err_msg = 'UnicodeDecodeError'
+                self.logger.exception(self.log_msg(f'Cannot decode binary content to text format in utf-8, {url=}, {ex=}'))
             except Exception as ex:
                 self.logger.exception(self.log_msg(f'{ex=}'))
                 raise ParserError(f'Error for {url=}') from ex
@@ -119,6 +133,8 @@ class Parser(Logger):
             # exit the loop if we don't have an error "429 Too Many Requests"
             if self.err_msg != '429':
                 break
+        else:
+            self.logger.error(self.log_msg(f'Failed to download html from {url=} due to error 429 Too Many Requests'))
 
         if self.html:
             return True # successfully downloaded html
@@ -150,7 +166,7 @@ def main():
     logging.captureWarnings(True)
     # logger = logging.getLogger(os.path.basename(__file__))
 
-    p = Parser()
+    p = Parser(parsers_config)
 
     print(p.get_html('https://www.google.com/'))
 
