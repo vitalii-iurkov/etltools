@@ -1,5 +1,6 @@
 __pycache__/
 .vscode/
+downloads/
 log/
 parsers/ua/
 venv/
