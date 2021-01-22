@@ -108,18 +108,20 @@ if __name__ == '__main__':
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DOWNLOADS_DIR = os.path.join(BASE_DIR, 'downloads')
 
-    # download playlist
+    # use
+
+    # <download playlist>
     # PLAYLIST_URL = ''
     # yt = YtDownload()
     # yt.download_playlist(
     #     downloads_dir=DOWNLOADS_DIR,
-    #     pl_url = PLAYLIST_URL,
+    #     pl_url=PLAYLIST_URL,
     #     pause_between_downloads=3
     # )
 
     # or
 
-    # download videos
+    # <download videos>
     # yt = YtDownload()
     # yt.download_videos(
     #     downloads_dir=DOWNLOADS_DIR,
