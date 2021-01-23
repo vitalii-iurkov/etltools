@@ -91,15 +91,15 @@ class Parser(Logger):
                     'User-Agent': ua.title, # get new or next after error/update User-Agent
                 }
                 # use `mitmproxy` for debugging purposes
-                proxies = {
-                    'http': 'http://127.0.0.1:8080',
-                    'https': 'http://127.0.0.1:8080',
-                }
+                # proxies = {
+                #     'http': 'http://127.0.0.1:8080',
+                #     'https': 'http://127.0.0.1:8080',
+                # }
                 response = requests.get(
                     url
                     , headers=headers
-                    , proxies=proxies
-                    , verify=False # enable https over http
+                    # , proxies=proxies
+                    # , verify=False # enable https over http
                 )
                 if response.status_code == 200:
                     self.html = response.content.decode(encoding='utf-8', errors=decode_errors)

@@ -9,7 +9,9 @@ import requests
 
 from etltools.local_settings import test_config
 from etltools.parsers.parser import Parser, ParserError
-from etltools.tests.parsers.server_data import server_data
+from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
+from etltools.tests.parsers._test_db import TestDB
+from etltools.tests.parsers.server_data import host_name, server_data
 
 
 class ParserTest(unittest.TestCase):
@@ -21,7 +23,6 @@ class ParserTest(unittest.TestCase):
         cls.logger = logging.getLogger(os.path.basename(__file__))
 
         # start flask server
-        cls.host_name = 'http://127.0.0.1:5000'
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         SERVER_FILE_NAME = os.path.join(BASE_DIR, 'parsers', 'server.py')
         cls.server = subprocess.Popen(
@@ -33,6 +34,10 @@ class ParserTest(unittest.TestCase):
         time.sleep(3) # it is necessary to maintain a minimum pause for a full server start
         cls.logger.info('Successfully started Flask test server')
 
+        # create / recreate database schema and insert test data into parsers.user_agent
+        TestDB.create_schema()
+        _ = TestDB.user_agent_insert_test_data()
+
     @classmethod
     def tearDownClass(cls):
         try:
@@ -40,6 +45,10 @@ class ParserTest(unittest.TestCase):
             cls.logger.info('Successfully terminated Flask test server')
         except Exception as ex:
             cls.logger.exception(f'Error while terminating Flask test server, {ex=}')
+
+    def setUp(self):
+        # reset User-Agents usages before each test
+        TestDB.user_agent_reset_successes_errors()
 
     def _test_pages_url_all_urls(self):
         '''
@@ -96,18 +105,23 @@ class ParserTest(unittest.TestCase):
                 self.assertEqual(pages_url[pages_url_idx], page_url)
             pages_url_idx += 1
 
-    def _test_get_html_ok(self):
+    def test_get_html_ok(self):
         '''
         successfully downloaded html
         '''
         p = Parser(test_config)
-        ok_url = self.__class__.host_name + '/ok'
+        ok_url = host_name + server_data['ok']['url']
 
         # should be successfully downloaded html
         self.assertTrue(p.get_html(ok_url))
 
         # check for html, err_msg
         self.assertTrue(('Ok', None), (p.html, p.err_msg))
+
+        # check for successes, errors; should be +1 successes and +0 errors
+        with PgConnector(test_config) as db:
+            successes, errors = db.execute('SELECT SUM(successes), SUM(errors) FROM user_agent;')[0]
+        self.assertEqual((successes, errors), (1, 0))
 
     def _test_get_html_429_ok(self):
         '''
@@ -121,11 +135,11 @@ class ParserTest(unittest.TestCase):
         '''
         pass
 
-    def test_get_html_unicode_decode_error(self):
+    def _test_get_html_unicode_decode_error(self):
         '''
         download html in encoding other than utf-8
         '''
-        unicode_decode_error_url = self.__class__.host_name + '/unicode-decode-error'
+        unicode_decode_error_url = host_name + server_data['unicode_decode_error']['url']
 
         p = Parser(test_config)
 
