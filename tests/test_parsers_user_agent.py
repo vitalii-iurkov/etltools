@@ -12,6 +12,7 @@ from etltools.pg_tools.db_config import DBConfig
 from etltools.local_settings import test_config
 from etltools.parsers.user_agent import UserAgent, UserAgentError
 from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
+from etltools.tests.parsers._test_db import TestDB
 
 
 class UserAgentTest(unittest.TestCase):
@@ -30,36 +31,12 @@ class UserAgentTest(unittest.TestCase):
         logging.config.fileConfig(fname='test_logging.conf', disable_existing_loggers=False)
         cls.logger = logging.getLogger(os.path.basename(__file__))
 
-        cls.BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        cls.SQL_DUMP_DIR = os.path.join(cls.BASE_DIR, r'parsers/')
-        cls.TEST_DATA_DIR = os.path.join(cls.SQL_DUMP_DIR, r'user_agent_test_data/')
-
-        # drop all object from the test database
-        with PgConnector(test_config) as db:
-            _ = db.execute('DROP OWNED BY test CASCADE;')
-
-        # create full data schema in the test database (without any data in it)
-        # depends on `../parsers/for_testings_only` directory and files
-        schema_file_name = 'parsers_dump_schema_only.sql' # dump file to recreate data schema
-        fname = os.path.join(cls.SQL_DUMP_DIR, schema_file_name)
-
-        # execute psql to process sql dump file
-        _ = subprocess.run(
-            ["psql", "-f", fname],
-            stdout=subprocess.PIPE,
-            env=os.environ | {
-                'PGHOST'        : test_config.host,
-                'PGPORT'        : test_config.port,
-                'PGDATABASE'    : test_config.database,
-                'PGUSER'        : test_config.user,
-                'PGPASSWORD'    : test_config.password,
-            }
-        )
+        # create / recreate test database schema
+        TestDB.create_schema()
 
     def setUp(self):
         # tuncate table user_agent before each test case
-        with PgConnector(test_config) as db:
-            _ = db.execute('TRUNCATE TABLE user_agent RESTART IDENTITY CASCADE;')
+        TestDB.user_agent_truncate_table()
 
     def test_property_title_no_db_connection(self):
         '''
@@ -83,7 +60,7 @@ class UserAgentTest(unittest.TestCase):
         read text files with User-Agents and write them into the database
         '''
 
-        # in the TEST_DATA_DIR we expect to find four text files:
+        # in the test data we expect to find four text files:
         #   `Chrome.txt` - 19 lines, 19 correct User-Agent lines
         #   `Firefox.txt` - 11 lines, 11 correct User-Agent lines
         #   `Incorrect User Agents File.txt` - 4 lines, 4 incorrect User-Agent lines
@@ -96,8 +73,7 @@ class UserAgentTest(unittest.TestCase):
             'errors'    : 8,
         }
 
-        ua = UserAgent(test_config)
-        res_stats = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
+        res_stats = TestDB.user_agent_insert_test_data()
 
         self.assertEqual(test_stats, res_stats)
 
@@ -106,8 +82,8 @@ class UserAgentTest(unittest.TestCase):
         get next User-Agent from the database
         '''
         # insert User-Agent test data
+        _ = TestDB.user_agent_insert_test_data()
         ua = UserAgent(test_config)
-        _ = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
 
         # get one User-Agent with raw SQL query
         with PgConnector(test_config) as db:
@@ -130,8 +106,8 @@ class UserAgentTest(unittest.TestCase):
         test_data = check_data.copy()
 
         # insert User-Agent test data from text files
+        _ = TestDB.user_agent_insert_test_data()
         ua = UserAgent(test_config)
-        _ = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
 
         prev_title = None
         increase_new_titles = True # increase the number of new titles if we have an error or at the beginning of a loop
@@ -169,8 +145,8 @@ class UserAgentTest(unittest.TestCase):
         test User-Agent usage without increasing successes or errors, only change update_tz
         '''
         # insert User-Agent test data from text files
+        _ = TestDB.user_agent_insert_test_data()
         ua = UserAgent(test_config)
-        _ = ua.insert_user_agents_from_files(self.__class__.TEST_DATA_DIR)
 
         # update `successes` and `errors` with random values
         # update only first 80% of rows to have NULL values in `update_tz` fields for the rest of rows

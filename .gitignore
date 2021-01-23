@@ -1,8 +1,8 @@
 __pycache__/
+.venv/
 .vscode/
-downloads/
+experiments/downloads/
 log/
 parsers/ua/
-venv/
 local_settings.py
 test_app.py
