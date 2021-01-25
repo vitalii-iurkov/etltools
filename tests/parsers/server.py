@@ -10,6 +10,14 @@ app = Flask(__name__)
 def response_ok():
     return server_data['ok']['msg'], 200
 
+@app.route('/429-ok')
+def  response_429_ok():
+    if server_data['429_ok']['attempts'] > 1:
+        server_data['429_ok']['attempts'] -= 1
+        return '429 Too Many Requests', 429
+    else:
+        return server_data['429_ok']['msg'], 200
+
 @app.route(server_data['429_fail']['url'])
 def response_429_fail():
     return server_data['429_fail']['msg'], 429

@@ -54,7 +54,7 @@ class ParserTest(unittest.TestCase):
         # reset User-Agents usages before each test
         TestDB.user_agent_reset_successes_errors()
 
-    def _test_pages_url_all_urls(self):
+    def test_pages_url_all_urls(self):
         '''
         test all pages url from start_url to template_url.format(to_page)
         '''
@@ -80,7 +80,7 @@ class ParserTest(unittest.TestCase):
                 self.assertEqual(pages_url[pages_url_idx], page_url)
             pages_url_idx += 1
 
-    def _test_pages_url_from_to_urls(self):
+    def test_pages_url_from_to_urls(self):
         '''
         test only subset of pages url : from_page - to_page
         '''
@@ -127,17 +127,73 @@ class ParserTest(unittest.TestCase):
             successes, errors = db.execute("SELECT SUM(successes), SUM(errors) FROM user_agent WHERE hardware='Computer';")[0]
         self.assertEqual((successes, errors), (1, 0))
 
-    def _test_get_html_429_ok(self):
+    def test_get_html_429_ok(self):
         '''
         successfully downloaded html after several attempts with error 429 Too Many Requestst
         '''
-        pass
+        ATTEMPTS_TOTAL = server_data['429_ok']['attempts_total'] # total number of possible attempts to download html
+        ATTEMPTS = server_data['429_ok']['attempts'] # total number of attempts to successfully download html
+
+        Row = namedtuple('Row', ['successes', 'errors', 'update_tz'])
+
+        p = Parser(test_config)
+
+        with PgConnector(test_config) as db:
+            before = [
+                Row(successes, errors, update_tz)
+                for successes, errors, update_tz
+                in db.execute("SELECT successes, errors, update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")
+            ]
+
+        result = p.get_html(
+            url=server_config.url() + server_data['429_ok']['url']
+            , attempts_total=ATTEMPTS_TOTAL
+            , pause_duration=0
+            , pause_increment=1
+        )
+
+        with PgConnector(test_config) as db:
+            after = [
+                Row(successes, errors, update_tz)
+                for successes, errors, update_tz
+                in db.execute("SELECT successes, errors, update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")
+            ]
+
+        # we shouldn't change total number of rows in the user_agent table
+        self.assertEqual(len(after), len(before))
+
+        # we should successfully get html
+        self.assertTrue(result)
+
+        # check for result values in html, err_msg
+        self.assertEqual((p.html, p.err_msg), (server_data['429_ok']['msg'], None))
+
+        # check for total number of successes and errors after the process
+        before_successes_total = sum([row.successes for row in before])
+        before_errors_total = sum([row.errors for row in before])
+
+        after_successes_total = sum([row.successes for row in after])
+        after_errors_total = sum([row.errors for row in after])
+
+        self.assertEqual(
+            (before_successes_total+1, before_errors_total+ATTEMPTS-1),
+            (after_successes_total, after_errors_total)
+        )
+
+        # total number of row can be less than ATTEMPTS_TOTAL
+        update_tz_compare = [
+            after_row.update_tz>before_row.update_tz
+            for before_row, after_row in zip(before, after)
+            if after_row.update_tz != before_row.update_tz
+        ]
+        self.assertEqual(update_tz_compare, [True] * min(len(before), ATTEMPTS))
 
     def test_get_html_429_fail(self):
         '''
         failed to download html due to exceeded download attempts with error 429 Too Many Requestst
         '''
-        ATTEMPTS_TOTAL = 3
+        ATTEMPTS_TOTAL = server_data['429_fail']['attempts_total'] # total number of possible attempts to download html
+
         Row = namedtuple('Row', ['successes', 'errors', 'update_tz'])
 
         p = Parser(test_config)

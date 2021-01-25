@@ -28,10 +28,13 @@ server_data = {
     '429_ok': {
         'url': '/429-ok',
         'msg': '429-ok',
+        'attempts': 3, # number of attempts to successfully download html; for example, status codes for value 5 are 429, 429, 429, 429, 200
+        'attempts_total': 8, # total number of possible attempts to download html; must be `>= attempts`
     },
     '429_fail': {
         'url': '/429-fail',
         'msg': '429-fail',
+        'attempts_total': 5, # total number of possible attempts to download html
     },
     'unicode_decode_error': {
         'url': '/unicode_decode_error',
