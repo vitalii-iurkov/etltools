@@ -11,7 +11,7 @@ from etltools.local_settings import test_config
 from etltools.parsers.parser import Parser, ParserError
 from etltools.pg_tools.pg_connector import PgConnector, PgConnectorError
 from etltools.tests.parsers._test_db import TestDB
-from etltools.tests.parsers.server_data import host_name, server_data
+from etltools.tests.parsers.server_data import server_config, server_data
 
 
 class ParserTest(unittest.TestCase):
@@ -20,19 +20,22 @@ class ParserTest(unittest.TestCase):
     def setUpClass(cls):
         # apply logging during testing
         logging.config.fileConfig(fname='test_logging.conf', disable_existing_loggers=False)
+        logging.captureWarnings(True)
         cls.logger = logging.getLogger(os.path.basename(__file__))
 
         # start flask server
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        SERVER_FILE_NAME = os.path.join(BASE_DIR, 'parsers', 'server.py')
         cls.server = subprocess.Popen(
             ['python', '-m', 'flask', 'run']
-            , env=os.environ | {'FLASK_APP': SERVER_FILE_NAME}
+            , env=os.environ | {
+                'FLASK_APP': os.path.join(BASE_DIR, 'parsers', server_config.app),
+                'FLASK_RUN_PORT': server_config.port,
+            }
             , stdout=subprocess.PIPE
             , stderr=subprocess.PIPE
         )
         time.sleep(3) # it is necessary to maintain a minimum pause for a full server start
-        cls.logger.info('Successfully started Flask test server')
+        cls.logger.info(f'Successfully started Flask test server {server_config.url()}')
 
         # create / recreate database schema and insert test data into parsers.user_agent
         TestDB.create_schema()
@@ -42,9 +45,9 @@ class ParserTest(unittest.TestCase):
     def tearDownClass(cls):
         try:
             cls.server.terminate()
-            cls.logger.info('Successfully terminated Flask test server')
+            cls.logger.info(f'Successfully terminated Flask test server {server_config.url()}')
         except Exception as ex:
-            cls.logger.exception(f'Error while terminating Flask test server, {ex=}')
+            cls.logger.exception(f'Error while terminating Flask test server {server_config.url()}, {ex=}')
 
     def setUp(self):
         # reset User-Agents usages before each test
@@ -110,7 +113,7 @@ class ParserTest(unittest.TestCase):
         successfully downloaded html
         '''
         p = Parser(test_config)
-        ok_url = host_name + server_data['ok']['url']
+        ok_url = server_config.url() + server_data['ok']['url']
 
         # should be successfully downloaded html
         self.assertTrue(p.get_html(ok_url))
@@ -139,7 +142,7 @@ class ParserTest(unittest.TestCase):
         '''
         download html in encoding other than utf-8
         '''
-        unicode_decode_error_url = host_name + server_data['unicode_decode_error']['url']
+        unicode_decode_error_url = server_config.url() + server_data['unicode_decode_error']['url']
 
         p = Parser(test_config)
 

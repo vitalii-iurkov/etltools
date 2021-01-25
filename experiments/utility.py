@@ -42,17 +42,17 @@ if __name__ == '__main__':
     else:
         print('\n' * 42)
 
-    string_to_file_data = [
+    string_to_filename_data = [
         ('dir1/dir2/dir3', 'dir1 dir2 dir3'),
         ('<some$ %text%  _with_ #non-alphanumeric !characters?> ', 'some text _with_ non alphanumeric characters'),
         ('Hello, World!...', 'Hello World'),
     ]
 
     print('Tests for Utility.string_to_filename():')
-    for idx, (test_data, check_data) in enumerate(string_to_file_data):
+    for idx, (test_data, check_data) in enumerate(string_to_filename_data):
         try:
             assert Utility.string_to_filename(test_data) == check_data, f"Utility.string_to_filename('{test_data}') != '{check_data}'"
         except AssertionError as ex:
-            print(f'{idx+1}/{len(string_to_file_data)} error : {ex}')
+            print(f'{idx+1}/{len(string_to_filename_data)} error : {ex}')
         else:
-            print(f'{idx+1}/{len(string_to_file_data)} ok')
+            print(f'{idx+1}/{len(string_to_filename_data)} ok')
