@@ -154,27 +154,3 @@ class Parser(Logger):
         should be implemented in child classes
         '''
         raise NotImplementedError
-
-
-def main():
-    if os.name == 'posix':
-        _ = subprocess.run('clear')
-    else:
-        print('\n' * 42)
-
-    logging.config.fileConfig(fname='logging.conf', disable_existing_loggers=False)
-    logging.captureWarnings(True)
-    # logger = logging.getLogger(os.path.basename(__file__))
-
-    p = Parser(parsers_config)
-
-    print(p.get_html('https://www.google.com/'))
-
-    if p.html:
-        print('Ok')
-    else:
-        print('Error')
-
-
-if __name__ == '__main__':
-    main()

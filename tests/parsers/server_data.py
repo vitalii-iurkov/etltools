@@ -24,12 +24,18 @@ server_data = {
     'ok': {
         'url': '/ok',
         'msg': 'ok',
-        'status_code': 200,
+    },
+    '429_ok': {
+        'url': '/429-ok',
+        'msg': '429-ok',
+    },
+    '429_fail': {
+        'url': '/429-fail',
+        'msg': '429-fail',
     },
     'unicode_decode_error': {
         'url': '/unicode_decode_error',
         'msg': 'Привет, Мир!'.encode('cp1251'),
-        'status_code': 200,
     },
 }
 

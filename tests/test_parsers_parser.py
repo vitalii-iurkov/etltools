@@ -4,6 +4,7 @@ import os
 import subprocess
 import time
 import unittest
+from collections import namedtuple
 
 import requests
 
@@ -119,11 +120,11 @@ class ParserTest(unittest.TestCase):
         self.assertTrue(p.get_html(ok_url))
 
         # check for html, err_msg
-        self.assertTrue(('Ok', None), (p.html, p.err_msg))
+        self.assertTrue((server_data['ok']['msg'], None), (p.html, p.err_msg))
 
         # check for successes, errors; should be +1 successes and +0 errors
         with PgConnector(test_config) as db:
-            successes, errors = db.execute('SELECT SUM(successes), SUM(errors) FROM user_agent;')[0]
+            successes, errors = db.execute("SELECT SUM(successes), SUM(errors) FROM user_agent WHERE hardware='Computer';")[0]
         self.assertEqual((successes, errors), (1, 0))
 
     def _test_get_html_429_ok(self):
@@ -132,13 +133,63 @@ class ParserTest(unittest.TestCase):
         '''
         pass
 
-    def _test_get_html_429_fail(self):
+    def test_get_html_429_fail(self):
         '''
         failed to download html due to exceeded download attempts with error 429 Too Many Requestst
         '''
-        pass
+        ATTEMPTS_TOTAL = 3
+        Row = namedtuple('Row', ['successes', 'errors', 'update_tz'])
 
-    def _test_get_html_unicode_decode_error(self):
+        p = Parser(test_config)
+
+        with PgConnector(test_config) as db:
+            before = [
+                Row(successes, errors, update_tz)
+                for successes, errors, update_tz
+                in db.execute("SELECT successes, errors, update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")
+            ]
+
+        result = p.get_html(
+            url=server_config.url() + server_data['429_fail']['url']
+            , attempts_total=ATTEMPTS_TOTAL
+            , pause_duration=0
+            , pause_increment=1
+        )
+
+        with PgConnector(test_config) as db:
+            after = [
+                Row(successes, errors, update_tz)
+                for successes, errors, update_tz
+                in db.execute("SELECT successes, errors, update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")
+            ]
+
+        # we shouldn't change total number of rows in the user_agent table
+        self.assertEqual(len(after), len(before))
+
+        # we shouldn't get any html
+        self.assertFalse(result)
+
+        # check for result values in html, err_msg
+        self.assertEqual((p.html, p.err_msg), (None, '429'))
+
+        # check for total number of successes and errors after the process
+        before_successes_total = sum([row.successes for row in before])
+        before_errors_total = sum([row.errors for row in before])
+
+        after_successes_total = sum([row.successes for row in after])
+        after_errors_total = sum([row.errors for row in after])
+
+        self.assertEqual((before_successes_total, before_errors_total+ATTEMPTS_TOTAL), (after_successes_total, after_errors_total))
+
+        # total number of row can be less than ATTEMPTS_TOTAL
+        update_tz_compare = [
+            after_row.update_tz>before_row.update_tz
+            for before_row, after_row in zip(before, after)
+            if after_row.update_tz != before_row.update_tz
+        ]
+        self.assertEqual(update_tz_compare, [True] * min(len(before), ATTEMPTS_TOTAL))
+
+    def test_get_html_unicode_decode_error(self):
         '''
         download html in encoding other than utf-8
         '''
@@ -159,8 +210,31 @@ class ParserTest(unittest.TestCase):
                 self.assertEqual(get_html_result, p.get_html(url=unicode_decode_error_url, decode_errors=decode_errors))
                 self.assertEqual((html, err_msg), (p.html, p.err_msg))
 
-    def _test_get_html_fail(self):
+    def test_get_html_fail(self):
         '''
-        other errors while downloading html
+        other errors while downloading html, except for the 429 status code
         '''
-        pass
+        p = Parser(test_config)
+        error_url = server_config.url() + '/error_url'
+
+        # take all update_tz values from the user_agent table before the process
+        with PgConnector(test_config) as db:
+            before_update_tz = [row[0] for row in db.execute("SELECT update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")]
+
+        # we shouldn't get any html from the given url
+        self.assertFalse(p.get_html(error_url))
+
+        # html is None, and err_mgs can be any status_code any error meggase
+        self.assertEqual(p.html, None)
+        self.assertNotEqual(p.err_msg, None)
+
+        # we shouldn't get any databse changes except in only one update_tz
+        with PgConnector(test_config) as db:
+            successes, errors = db.execute("SELECT SUM(successes), SUM(errors) FROM user_agent WHERE hardware='Computer';")[0]
+            after_update_tz = [row[0] for row in db.execute("SELECT update_tz FROM user_agent WHERE hardware='Computer' ORDER BY user_agent_id;")]
+        self.assertEqual((successes, errors), (0, 0))
+
+        # we should change only one value (update_tz) in one row
+        self.assertEqual(len(before_update_tz), len(after_update_tz)) # total number of rows should be equal before and after the process
+        compare = [after>before for before, after in zip(before_update_tz, after_update_tz) if before!=after]
+        self.assertEqual(compare, [True]) # we should change only one row
