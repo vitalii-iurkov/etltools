@@ -141,7 +141,20 @@ class Parser(Logger):
         else:
             return False # error while downloading html
 
-    def parse_catalog_html(self):
+    def get_html_from_file(self, file_name: str) -> None:
+        '''
+        read local file and store its content in self.html
+        this method is for testings only (when analyzing html before start auto scraping)
+        and this method is not intended to be used in production
+        all exceptions must be caught in the client application
+        supports only 'utf-8' encoding
+
+        in: file_name, str - full file name
+        '''
+        with open(file_name, 'r', encoding='utf-8') as f:
+            self.html = f.read()
+
+    def parse_page_html(self):
         '''
         parse html catalog page
         should be implemented in child classes
