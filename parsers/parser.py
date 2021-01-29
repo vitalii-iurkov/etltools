@@ -141,27 +141,35 @@ class Parser(Logger):
         else:
             return False # error while downloading html
 
-    def get_html_from_file(self, file_name: str) -> None:
+    def get_html_from_file(self, file_name: str) -> bool:
         '''
         read local file and store its content in self.html
         this method is for testings only (when analyzing html before start auto scraping)
         and this method is not intended to be used in production
-        all exceptions must be caught in the client application
         supports only 'utf-8' encoding
 
-        in: file_name, str - full file name
+        :param file_name: full file name
+        :type file_name: str
+        :returns: boolean value - True if success else False
+        :rtype: bool
         '''
-        with open(file_name, 'r', encoding='utf-8') as f:
-            self.html = f.read()
+        try:
+            with open(file_name, 'r', encoding='utf-8') as f:
+                self.html = f.read()
+            self.err_msg = None
+            return True
+        except Exception as ex:
+            self.err_msg = str(ex)
+            return False
 
-    def parse_page_html(self):
+    def parse_catalog_page_html(self):
         '''
         parse html catalog page
         should be implemented in child classes
         '''
         raise NotImplementedError
 
-    def parse_item_html(self):
+    def parse_item_page_html(self):
         '''
         parse html item page
         should be implemented in child classes
