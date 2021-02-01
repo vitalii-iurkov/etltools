@@ -23,10 +23,11 @@ class UtilsTest(unittest.TestCase):
         simple converter from string to an integer, supports only strings of digits and spaces
         '''
         test_data = [
-            ('12 345 678', 12345678),
+            (' 12 345 678\n', 12345678),
+            ('1  234', None),
             ('3.14', None),
             (12, None),
-            ('12e', None),
+            ('1.2e10', None),
             ('123', 123),
         ]
         for idx, (line, result) in enumerate(test_data):
